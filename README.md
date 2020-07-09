@@ -1,2 +1,2 @@
 # CenterNet-Lite
-A resnet18 version of CenterNet（objects as points）
+A PyTorch version of CenterNet（objects as points）. I only support resnet18 version. No DLA or Hourglass version.
