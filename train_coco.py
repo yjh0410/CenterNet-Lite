@@ -34,7 +34,7 @@ def parse_args():
                         help='yes or no to choose using warmup strategy to train')
     parser.add_argument('--wp_epoch', type=int, default=4,
                         help='The upper bound of warm-up')
-    parser.add_argument('--dataset_root', default='/home/k303/object-detection/dataset/COCO/', 
+    parser.add_argument('--dataset_root', default='/home/k545/object-detection/pytorch-yolo-v2/data/COCO/', 
                         help='Location of VOC root directory')
     parser.add_argument('--num_classes', default=80, type=int, 
                         help='The number of dataset classes')
@@ -165,8 +165,8 @@ def train():
             # WarmUp strategy for learning rate
             if not args.no_warm_up:
                 if epoch < args.wp_epoch:
-                    # tmp_lr = base_lr * pow((iter_i+epoch*epoch_size)*1. / (args.wp_epoch*epoch_size), 4)
-                    tmp_lr = 1e-6 + (base_lr-1e-6) * (iter_i+epoch*epoch_size) / (epoch_size * (args.wp_epoch))
+                    tmp_lr = base_lr * pow((iter_i+epoch*epoch_size)*1. / (args.wp_epoch*epoch_size), 4)
+                    # tmp_lr = 1e-6 + (base_lr-1e-6) * (iter_i+epoch*epoch_size) / (epoch_size * (args.wp_epoch))
                     set_lr(optimizer, tmp_lr)
 
                 elif epoch == args.wp_epoch and iter_i == 0:
@@ -175,7 +175,7 @@ def train():
         
 
             targets = [label.tolist() for label in targets]
-            targets = tools.multi_gt_creator(input_size, net.stride, args.num_classes, targets)
+            targets = tools.gt_creator(input_size, net.stride, args.num_classes, targets)
 
 
             # to device
@@ -211,14 +211,13 @@ def train():
         # COCO evaluation
         if (epoch + 1) % args.eval_epoch == 0:
             model.trainable = False
-            model.set_grid(cfg['min_dim'])
+            model.conf_thresh = 0.1
             # evaluate
             ap50_95, ap50 = evaluator.evaluate(model)
             print('ap50 : ', ap50)
             print('ap50_95 : ', ap50_95)
             # convert to training mode.
             model.trainable = True
-            model.set_grid(input_size)
             model.train()
             if args.tfboard:
                 writer.add_scalar('val/COCOAP50', ap50, epoch + 1)
