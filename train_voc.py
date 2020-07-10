@@ -41,7 +41,7 @@ def parse_args():
                         help='Weight decay for SGD')
     parser.add_argument('--gamma', default=0.1, type=float, 
                         help='Gamma update for SGD')
-    parser.add_argument('--num_workers', default=0, type=int, 
+    parser.add_argument('--num_workers', default=8, type=int, 
                         help='Number of workers used in dataloading')
     parser.add_argument('--cuda', action='store_true', default=False,
                         help='use cuda.')
@@ -130,7 +130,7 @@ def train():
 
     data_loader = data.DataLoader(dataset, args.batch_size,
                                   num_workers=args.num_workers,
-                                  shuffle=False, collate_fn=detection_collate,
+                                  shuffle=True, collate_fn=detection_collate,
                                   pin_memory=True)
     # create batch iterator
     t0 = time.time()
@@ -172,7 +172,6 @@ def train():
             # make train label
             targets = tools.gt_creator(input_size, net.stride, args.num_classes, targets)
 
-            # vis data
             # vis_heatmap(targets)
 
             # to device
