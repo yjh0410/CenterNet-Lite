@@ -129,10 +129,10 @@ def detect(net, device, transform, setup='VOC', mode='image', path_to_img=None, 
             x = torch.from_numpy(transform(img)[0][:, :, (2, 1, 0)]).permute(2, 0, 1)
             x = x.unsqueeze(0).to(device)
 
-            # torch.cuda.synchronize()
+            torch.cuda.synchronize()
             t0 = time.time()
             detections = net(x)      # forward pass
-            # torch.cuda.synchronize()
+            torch.cuda.synchronize()
             t1 = time.time()
             print("detection time used ", t1-t0, "s")
             # scale each detection back up to the image
