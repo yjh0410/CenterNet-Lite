@@ -60,7 +60,7 @@ class CenterNet(nn.Module):
         return grid_xy
 
     def set_grid(self, input_size):
-        self.grid_cell, self.stride_tensor = self.create_grid(input_size)
+        self.grid_cell = self.create_grid(input_size)
         self.scale = np.array([[[input_size, input_size, input_size, input_size]]])
         self.scale_torch = torch.tensor(self.scale.copy(), device=self.device).float()
 

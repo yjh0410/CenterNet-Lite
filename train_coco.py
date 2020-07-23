@@ -211,7 +211,6 @@ def train():
         # COCO evaluation
         if (epoch + 1) % args.eval_epoch == 0:
             model.trainable = False
-            model.conf_thresh = 0.1
             # evaluate
             ap50_95, ap50 = evaluator.evaluate(model)
             print('ap50 : ', ap50)
