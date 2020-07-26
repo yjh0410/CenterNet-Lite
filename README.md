@@ -7,6 +7,9 @@ Link：https://pan.baidu.com/s/170OYftGRVW-j5qAKYyHSQQ
 
 Password：jz4q
 
+The official CenterNet takes advantage of DCN while I just replace it with SPP used in YOLOv3 as I'm 
+a little lazy ~
+
 <table><tbody>
 <tr><th align="left" bgcolor=#f8f8f8> </th>     <td bgcolor=white> data </td><td bgcolor=white> AP </td><td bgcolor=white> AP50 </td></tr>
 
