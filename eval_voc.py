@@ -36,9 +36,16 @@ parser.add_argument('-v', '--version', default='centernet',
                     help='centernet.')
 parser.add_argument('-d', '--dataset', default='VOC',
                     help='VOC or COCO dataset')
-parser.add_argument('--trained_model', type=str,
-                    default='weights/', 
-                    help='Trained state_dict file path to open')
+parser.add_argument('-size', '--input_size', default=512, type=float,
+                    help='input size')
+parser.add_argument('--trained_model', default='weight/voc/',
+                    type=str, help='Trained state_dict file path to open')
+parser.add_argument('--conf_thresh', default=0.3, type=float,
+                    help='Confidence threshold')
+parser.add_argument('--nms_thresh', default=0.45, type=float,
+                    help='NMS threshold')
+parser.add_argument('-nms', '--use_nms', action='store_true', default=False,
+                    help='use nms.')
 parser.add_argument('--save_folder', default='eval/', type=str,
                     help='File path to save results')
 parser.add_argument('--gpu_ind', default=0, type=int, 
@@ -359,13 +366,13 @@ def test_net(net, dataset, device, top_k):
     det_file = os.path.join(output_dir, 'detections.pkl')
 
     for i in range(num_images):
-        im, gt, h, w = dataset.pull_item(i)
+        im, _, h, w = dataset.pull_item(i)
 
         x = Variable(im.unsqueeze(0)).to(device)
         _t['im_detect'].tic()
-        detections = net(x)
+        bboxes, scores, cls_inds = net(x)
         detect_time = _t['im_detect'].toc(average=False)
-        bboxes, scores, cls_inds = detections
+        # map the boxes to origin image scale
         scale = np.array([[w, h, w, h]])
         bboxes *= scale
 
@@ -380,9 +387,8 @@ def test_net(net, dataset, device, top_k):
                                 c_scores[:, np.newaxis])).astype(np.float32,
                                                                 copy=False)
             all_boxes[j][i] = c_dets
-
-        print('im_detect: {:d}/{:d} {:.3f}s'.format(i + 1,
-                                                    num_images, detect_time))
+        if i % 500 == 0:
+            print('im_detect: {:d}/{:d} {:.3f}s'.format(i + 1, num_images, detect_time))
 
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
@@ -399,19 +405,25 @@ def evaluate_detections(box_list, output_dir, dataset):
 if __name__ == '__main__':
     num_classes = len(labelmap)
 
-    cfg = config.voc_cfg
+    input_size = [args.input_size, args.input_size]
+    # load net
     if args.version == 'centernet':
         from models.centernet import CenterNet
-        net = CenterNet(device, input_size=cfg['min_dim'], num_classes=num_classes)
+        net = CenterNet(device, 
+                        input_size=input_size, 
+                        num_classes=num_classes, 
+                        conf_thresh=args.conf_thresh, 
+                        nms_thresh=args.nms_thresh, 
+                        use_nms=args.use_nms)
     
-    # load net
     net.load_state_dict(torch.load(args.trained_model, map_location=device))
     net.eval()
     print('Finished loading model!')
     # load data
-    dataset = VOCDetection(args.voc_root, [('2007', set_type)],
-                           BaseTransform(net.input_size, mean=(0.406, 0.456, 0.485), std=(0.225, 0.224, 0.229)),
-                           VOCAnnotationTransform())
+    dataset = VOCDetection(root=VOC_ROOT, 
+                            img_size=None, 
+                            image_sets=[('2007', set_type)],
+                            transform=BaseTransform(input_size),)
     net = net.to(device)
     
     # evaluation

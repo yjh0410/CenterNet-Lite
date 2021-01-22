@@ -1,8 +1,10 @@
 from .voc0712 import VOCDetection, VOCAnnotationTransform, VOC_CLASSES, VOC_ROOT
+from .cocodataset import COCODataset, coco_class_labels, coco_class_index, coco_root
 from .config import *
 import torch
 import cv2
 import numpy as np
+
 
 def detection_collate(batch):
     """Custom collate fn for dealing with batches of images that have a different
@@ -26,7 +28,7 @@ def detection_collate(batch):
 
 
 def base_transform(image, size, mean, std):
-    x = cv2.resize(image, (size, size)).astype(np.float32)
+    x = cv2.resize(image, (size[1], size[0])).astype(np.float32)
     x /= 255.
     x -= mean
     x /= std

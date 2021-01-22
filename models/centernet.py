@@ -1,13 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import Conv2d, DeConv2d, SPP
+from utils import Conv, DeConv, SPP, BottleneckCSP
 from backbone import *
 import numpy as np
 import tools
 
 class CenterNet(nn.Module):
-    def __init__(self, device, input_size=None, trainable=False, num_classes=None, conf_thresh=0.3, nms_thresh=0.45, topk=100, use_nms=False, hr=False):
+    def __init__(self, device, input_size=None, trainable=False, num_classes=None, conf_thresh=0.05, nms_thresh=0.45, topk=100, use_nms=False, hr=False):
         super(CenterNet, self).__init__()
         self.device = device
         self.input_size = input_size
@@ -15,42 +15,45 @@ class CenterNet(nn.Module):
         self.num_classes = num_classes
         self.conf_thresh = conf_thresh
         self.nms_thresh = nms_thresh
-        self.use_nms = use_nms
         self.stride = 4
         self.topk = topk
+        self.use_nms = use_nms
         self.grid_cell = self.create_grid(input_size)
-        self.scale = np.array([[[input_size, input_size, input_size, input_size]]])
+        self.scale = np.array([[[input_size[0], input_size[1], input_size[0], input_size[1]]]])
         self.scale_torch = torch.tensor(self.scale.copy(), device=self.device).float()
 
+        # backbone
         self.backbone = resnet18(pretrained=trainable)
 
-        self.smooth5 = nn.Sequential(
+        # neck
+        self.spp = nn.Sequential(
+            Conv(512, 256, k=1),
             SPP(),
-            Conv2d(512*4, 256, ksize=1),
-            Conv2d(256, 512, ksize=3, padding=1)
+            BottleneckCSP(256*4, 512, n=1, shortcut=False)
         )
 
-        self.deconv5 = DeConv2d(512, 256, ksize=4, stride=2) # 32 -> 16
-        self.deconv4 = DeConv2d(256, 256, ksize=4, stride=2) # 16 -> 8
-        self.deconv3 = DeConv2d(256, 256, ksize=4, stride=2) #  8 -> 4
+        # head
+        self.deconv5 = DeConv(512, 256, ksize=4, stride=2) # 32 -> 16
+        self.deconv4 = DeConv(256, 256, ksize=4, stride=2) # 16 -> 8
+        self.deconv3 = DeConv(256, 256, ksize=4, stride=2) #  8 -> 4
 
         self.cls_pred = nn.Sequential(
-            Conv2d(256, 64, ksize=3, padding=1, leakyReLU=True),
+            Conv(256, 64, k=3, p=1),
             nn.Conv2d(64, self.num_classes, kernel_size=1)
         )
 
         self.txty_pred = nn.Sequential(
-            Conv2d(256, 64, ksize=3, padding=1, leakyReLU=True),
+            Conv(256, 64, k=3, p=1),
             nn.Conv2d(64, 2, kernel_size=1)
         )
        
         self.twth_pred = nn.Sequential(
-            Conv2d(256, 64, ksize=3, padding=1, leakyReLU=True),
+            Conv(256, 64, k=3, p=1),
             nn.Conv2d(64, 2, kernel_size=1)
         )
 
     def create_grid(self, input_size):
-        w, h = input_size, input_size
+        h, w = input_size
         # generate grid cells
         ws, hs = w // self.stride, h // self.stride
         grid_y, grid_x = torch.meshgrid([torch.arange(hs), torch.arange(ws)])
@@ -61,7 +64,7 @@ class CenterNet(nn.Module):
 
     def set_grid(self, input_size):
         self.grid_cell = self.create_grid(input_size)
-        self.scale = np.array([[[input_size, input_size, input_size, input_size]]])
+        self.scale = np.array([[[input_size[0], input_size[1], input_size[0], input_size[1]]]])
         self.scale_torch = torch.tensor(self.scale.copy(), device=self.device).float()
 
     def decode_boxes(self, pred):
@@ -137,11 +140,11 @@ class CenterNet(nn.Module):
 
     def forward(self, x, target=None):
         # backbone
-        _, _, _, c5 = self.backbone(x)
+        c2, c3, c4, c5 = self.backbone(x)
         B = c5.size(0)
 
-        # deconv
-        p5 = self.smooth5(c5)
+        # bottom-up
+        p5 = self.spp(c5)
         p4 = self.deconv5(p5)
         p3 = self.deconv4(p4)
         p2 = self.deconv3(p3)
@@ -161,7 +164,12 @@ class CenterNet(nn.Module):
             twth_pred = twth_pred.permute(0, 2, 3, 1).contiguous().view(B, -1, 2)
 
             # compute loss
-            cls_loss, txty_loss, twth_loss, total_loss = tools.loss(pred_cls=cls_pred, pred_txty=txty_pred, pred_twth=twth_pred, label=target, num_classes=self.num_classes)
+            cls_loss, txty_loss, twth_loss, total_loss = tools.loss(pred_cls=cls_pred, 
+                                                                    pred_txty=txty_pred, 
+                                                                    pred_twth=twth_pred, 
+                                                                    label=target, 
+                                                                    num_classes=self.num_classes
+                                                                    )
 
             return cls_loss, txty_loss, twth_loss, total_loss       
 
@@ -204,5 +212,5 @@ class CenterNet(nn.Module):
                     topk_scores = topk_scores[keep]
                     topk_ind = topk_ind[keep]
 
-
                 return topk_bbox_pred, topk_scores, topk_ind
+                

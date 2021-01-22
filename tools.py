@@ -1,9 +1,9 @@
 import numpy as np
-from data import *
+import cv2
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-CLASS_COLOR = [(np.random.randint(255),np.random.randint(255),np.random.randint(255)) for _ in range(len(VOC_CLASSES))]
 
 
 class HeatmapLoss(nn.Module):
@@ -44,7 +44,7 @@ def gaussian_radius(det_size, min_overlap=0.7):
     return min(r1, r2, r3)
 
 
-def generate_dxdywh(gt_label, w, h, s):
+def generate_txtytwth(gt_label, w, h, s):
     xmin, ymin, xmax, ymax = gt_label[:-1]
     # compute the center, width and height
     c_x = (xmax + xmin) / 2 * w
@@ -57,7 +57,8 @@ def generate_dxdywh(gt_label, w, h, s):
 
     r = gaussian_radius([box_w_s, box_h_s])
     sigma_w = sigma_h = r / 3
-
+    # sigma_w = box_w_s / 6
+    # sigma_h = box_h_s / 6
 
     if box_w < 1e-28 or box_h < 1e-28:
         # print('A dirty data !!!')
@@ -81,19 +82,19 @@ def generate_dxdywh(gt_label, w, h, s):
 def gt_creator(input_size, stride, num_classes, label_lists=[]):
     # prepare the all empty gt datas
     batch_size = len(label_lists)
-    w = input_size
-    h = input_size
+    h, w = input_size
     
     ws = w // stride
     hs = h // stride
     s = stride
     gt_tensor = np.zeros([batch_size, hs, ws, num_classes+4+1])
 
+    grid_x_mat, grid_y_mat = np.meshgrid(np.arange(ws), np.arange(hs))
     # generate gt whose style is yolo-v1
     for batch_index in range(batch_size):
         for gt_label in label_lists[batch_index]:
             gt_cls = gt_label[-1]
-            result = generate_dxdywh(gt_label, w, h, s)
+            result = generate_txtytwth(gt_label, w, h, s)
             if result:
                 grid_x, grid_y, tx, ty, tw, th, weight, sigma_w, sigma_h = result
 
@@ -102,12 +103,17 @@ def gt_creator(input_size, stride, num_classes, label_lists=[]):
                 gt_tensor[batch_index, grid_y, grid_x, num_classes + 4] = weight
 
                 # create Gauss heatmap
-                for i in range(grid_x - 3*int(sigma_w), grid_x + 3*int(sigma_w) + 1):
-                    for j in range(grid_y - 3*int(sigma_h), grid_y + 3*int(sigma_h) + 1):
-                        if i < ws and j < hs:
-                            v = np.exp(- (i - grid_x)**2 / (2*sigma_w**2) - (j - grid_y)**2 / (2*sigma_h**2))
-                            pre_v = gt_tensor[batch_index, j, i, int(gt_cls)]
-                            gt_tensor[batch_index, j, i, int(gt_cls)] = max(v, pre_v)
+                heatmap = np.exp(- (grid_x_mat - grid_x) ** 2 / (2*sigma_w**2) - (grid_y_mat - grid_y)**2 / (2*sigma_h**2))
+                pre_v = gt_tensor[batch_index, :, :, int(gt_cls)]
+                gt_tensor[batch_index, :, :, int(gt_cls)] = np.maximum(heatmap, pre_v)
+
+                # create Gauss heatmap
+                # for i in range(grid_x - 3*int(sigma_w), grid_x + 3*int(sigma_w) + 1):
+                #     for j in range(grid_y - 3*int(sigma_h), grid_y + 3*int(sigma_h) + 1):
+                #         if i < ws and j < hs:
+                #             v = np.exp(- (i - grid_x)**2 / (2*sigma_w**2) - (j - grid_y)**2 / (2*sigma_h**2))
+                #             pre_v = gt_tensor[batch_index, j, i, int(gt_cls)]
+                #             gt_tensor[batch_index, j, i, int(gt_cls)] = max(v, pre_v)
 
     gt_tensor = gt_tensor.reshape(batch_size, -1, num_classes+4+1)
 

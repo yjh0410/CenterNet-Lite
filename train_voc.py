@@ -21,6 +21,8 @@ def parse_args():
                         help='centernet')
     parser.add_argument('-d', '--dataset', default='VOC',
                         help='VOC or COCO dataset')
+    parser.add_argument('-ms', '--multi_scale', action='store_true', default=False,
+                        help='use multi-scale trick')                  
     parser.add_argument('--batch_size', default=32, type=int, 
                         help='Batch size for training')
     parser.add_argument('--lr', default=1e-3, type=float, 
@@ -45,6 +47,8 @@ def parse_args():
                         help='Number of workers used in dataloading')
     parser.add_argument('--cuda', action='store_true', default=False,
                         help='use cuda.')
+    parser.add_argument('--mosaic', action='store_true', default=False,
+                        help='use mosaic.')
     parser.add_argument('--save_folder', default='weights/voc/', type=str, 
                         help='Gamma update for SGD')
     parser.add_argument('--tfboard', action='store_true', default=False,
@@ -71,6 +75,8 @@ def train():
 
     
     cfg = voc_cfg
+    if args.mosaic:
+        print('use Mosaic Augmentation ...')
 
     if args.cuda:
         print('use cuda')
@@ -79,8 +85,27 @@ def train():
     else:
         device = torch.device("cpu")
 
-    input_size = cfg['min_dim']
-    dataset = VOCDetection(root=args.dataset_root, transform=SSDAugmentation(cfg['min_dim'], mean=(0.406, 0.456, 0.485), std=(0.225, 0.224, 0.229)))
+    # use multi-scale trick
+    # multi scale
+    if args.multi_scale:
+        print('Let us use the multi-scale trick.')
+        input_size = [640, 640]
+    else:
+        input_size = [512, 512]
+
+    # dataset
+    dataset = VOCDetection(root=args.dataset_root, img_size=input_size[0],
+                            transform=SSDAugmentation(input_size),
+                            mosaic=args.mosaic)
+
+    # data loader
+    data_loader = torch.utils.data.DataLoader(
+                    dataset, 
+                    batch_size=args.batch_size, 
+                    shuffle=True, 
+                    collate_fn=detection_collate,
+                    num_workers=args.num_workers,
+                    pin_memory=True)
 
     # build model
     if args.version == 'centernet':
@@ -97,7 +122,6 @@ def train():
     if args.resume is not None:
         print('finetune COCO trained ')
         net.load_state_dict(torch.load(args.resume, map_location=device), strict=False)
-
 
     # use tfboard
     if args.tfboard:
@@ -128,10 +152,6 @@ def train():
     epoch_size = len(dataset) // args.batch_size
     max_epoch = cfg['max_epoch']
 
-    data_loader = data.DataLoader(dataset, args.batch_size,
-                                  num_workers=args.num_workers,
-                                  shuffle=True, collate_fn=detection_collate,
-                                  pin_memory=True)
     # create batch iterator
     t0 = time.time()
 
@@ -166,16 +186,24 @@ def train():
                     tmp_lr = base_lr
                     set_lr(optimizer, tmp_lr)
                     
-            targets = [label.tolist() for label in targets]
-            # vis_data(images, targets, input_size)
-
-            # make train label
-            targets = tools.gt_creator(input_size, net.stride, args.num_classes, targets)
-
-            # vis_heatmap(targets)
-
             # to device
             images = images.to(device)
+
+            # multi-scale trick
+            if iter_i % 10 == 0 and iter_i > 0 and args.multi_scale:
+                # randomly choose a new size
+                size = random.randint(10, 19) * 32
+                input_size = [size, size]
+                model.set_grid(input_size)
+            if args.multi_scale:
+                # interpolate
+                images = torch.nn.functional.interpolate(images, size=input_size, mode='bilinear', align_corners=False)
+            
+            # make train label
+            targets = [label.tolist() for label in targets]
+            # vis_data(images, targets, input_size)
+            targets = tools.gt_creator(input_size, net.stride, args.num_classes, targets)
+            # vis_heatmap(targets)
             targets = torch.tensor(targets).float().to(device)
 
             # forward and loss
@@ -198,7 +226,7 @@ def train():
                 print('[Epoch %d/%d][Iter %d/%d][lr %.6f]'
                     '[Loss: cls %.2f || txty %.2f || twth %.2f ||total %.2f || size %d || time: %.2f]'
                         % (epoch+1, max_epoch, iter_i, epoch_size, tmp_lr,
-                            cls_loss.item(), txty_loss.item(), twth_loss.item(), total_loss.item(), input_size, t1-t0),
+                            cls_loss.item(), txty_loss.item(), twth_loss.item(), total_loss.item(), input_size[0], t1-t0),
                         flush=True)
 
                 t0 = time.time()
@@ -214,15 +242,17 @@ def train():
 def set_lr(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
-        
+
+
 def vis_data(images, targets, input_size):
     # vis data
+    h, w = input_size
     mean=(0.406, 0.456, 0.485)
     std=(0.225, 0.224, 0.229)
     mean = np.array(mean, dtype=np.float32)
     std = np.array(std, dtype=np.float32)
 
-    img = images[0].permute(1, 2, 0).numpy()[:, :, ::-1]
+    img = images[0].permute(1, 2, 0).cpu().numpy()[:, :, ::-1]
     img = ((img * std + mean)*255).astype(np.uint8)
     cv2.imwrite('1.jpg', img)
 
@@ -230,26 +260,28 @@ def vis_data(images, targets, input_size):
     for box in targets[0]:
         xmin, ymin, xmax, ymax = box[:-1]
         # print(xmin, ymin, xmax, ymax)
-        xmin *= input_size
-        ymin *= input_size
-        xmax *= input_size
-        ymax *= input_size
+        xmin *= w
+        ymin *= h
+        xmax *= w
+        ymax *= h
         cv2.rectangle(img_, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (0, 0, 255), 2)
 
     cv2.imshow('img', img_)
     cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
 
 def vis_heatmap(targets):
     # vis heatmap
     HW = targets.shape[1]
     h = int(np.sqrt(HW))
-    for c in range(20):
-        heatmap = targets[0, :, c].reshape(h, h)
-        name = VOC_CLASSES[c]
-        heatmap = cv2.resize(heatmap, (512, 512))
-        cv2.imshow(name, heatmap)
-        cv2.waitKey(0)
-
+    heatmap = targets[0, :, :20].reshape(h, h, 20)
+    heatmap = np.max(heatmap, axis=2)
+    # name = VOC_CLASSES[c]
+    heatmap = cv2.resize(heatmap, (512, 512))
+    cv2.imshow('heatmap', heatmap)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     train()

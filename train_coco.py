@@ -22,8 +22,10 @@ def parse_args():
     parser = argparse.ArgumentParser(description='CenterNet Detection')
     parser.add_argument('-v', '--version', default='centernet',
                         help='centernet')
-    parser.add_argument('-d', '--dataset', default='VOC',
-                        help='VOC or COCO dataset')
+    parser.add_argument('-d', '--dataset', default='COCO',
+                        help='COCO dataset')
+    parser.add_argument('-ms', '--multi_scale', action='store_true', default=False,
+                        help='use multi-scale trick')                  
     parser.add_argument('--batch_size', default=32, type=int, 
                         help='Batch size for training')
     parser.add_argument('--lr', default=1e-3, type=float, 
@@ -34,8 +36,6 @@ def parse_args():
                         help='yes or no to choose using warmup strategy to train')
     parser.add_argument('--wp_epoch', type=int, default=4,
                         help='The upper bound of warm-up')
-    parser.add_argument('--dataset_root', default='/home/k545/object-detection/pytorch-yolo-v2/data/COCO/', 
-                        help='Location of VOC root directory')
     parser.add_argument('--num_classes', default=80, type=int, 
                         help='The number of dataset classes')
     parser.add_argument('--momentum', default=0.9, type=float, 
@@ -50,6 +50,8 @@ def parse_args():
                             default=10, help='interval between evaluations')
     parser.add_argument('--cuda', action='store_true', default=False,
                         help='use cuda.')
+    parser.add_argument('--mosaic', action='store_true', default=False,
+                        help='use mosaic.')
     parser.add_argument('--tfboard', action='store_true', default=False,
                         help='use tensorboard')
     parser.add_argument('--debug', action='store_true', default=False,
@@ -62,7 +64,7 @@ def parse_args():
 
 def train():
     args = parse_args()
-    data_dir = args.dataset_root
+    data_dir = coco_root
 
     path_to_save = os.path.join(args.save_folder, args.version)
     os.makedirs(path_to_save, exist_ok=True)
@@ -76,12 +78,43 @@ def train():
     else:
         device = torch.device("cpu")
 
-    input_size = cfg['min_dim']
+    # multi scale
+    if args.multi_scale:
+        print('Let us use the multi-scale trick.')
+        input_size = [640, 640]
+    else:
+        input_size = [512, 512]
+
+    print("Setting Arguments.. : ", args)
+    print("----------------------------------------------------------")
+    print('Loading the MSCOCO dataset...')
+    # dataset
     dataset = COCODataset(
                 data_dir=data_dir,
-                img_size=cfg['min_dim'],
-                transform=SSDAugmentation(cfg['min_dim'], mean=(0.406, 0.456, 0.485), std=(0.225, 0.224, 0.229)),
-                debug=args.debug)
+                img_size=input_size[0],
+                transform=SSDAugmentation(input_size),
+                debug=args.debug,
+                mosaic=args.mosaic)
+
+    # data loader
+    dataloader = torch.utils.data.DataLoader(
+                    dataset, 
+                    batch_size=args.batch_size, 
+                    shuffle=True, 
+                    collate_fn=detection_collate,
+                    num_workers=args.num_workers,
+                    pin_memory=True)
+
+    # cocoapi evaluator
+    evaluator = COCOAPIEvaluator(
+                    data_dir=data_dir,
+                    img_size=cfg['min_dim'],
+                    device=device,
+                    transform=BaseTransform(cfg['min_dim'])
+                    )
+    print('Training model on:', dataset.name)
+    print('The dataset size:', len(dataset))
+    print("----------------------------------------------------------")
 
     # build model
     if args.version == 'centernet':
@@ -94,14 +127,8 @@ def train():
         print('Unknown version !!!')
         exit()
 
-    
-    print("Setting Arguments.. : ", args)
-    print("----------------------------------------------------------")
-    print('Loading the MSCOCO dataset...')
-    print('Training model on:', dataset.name)
-    print('The dataset size:', len(dataset))
-    print("----------------------------------------------------------")
-
+    model = net
+    model.to(device).train()
 
     # use tfboard
     if args.tfboard:
@@ -112,24 +139,6 @@ def train():
         os.makedirs(log_path, exist_ok=True)
 
         writer = SummaryWriter(log_path)
-
-    
-    model = net
-    model.to(device).train()
-
-    dataloader = torch.utils.data.DataLoader(
-                    dataset, 
-                    batch_size=args.batch_size, 
-                    shuffle=True, 
-                    collate_fn=detection_collate,
-                    num_workers=args.num_workers)
-
-    evaluator = COCOAPIEvaluator(
-                    data_dir=data_dir,
-                    img_size=cfg['min_dim'],
-                    device=device,
-                    transform=BaseTransform(cfg['min_dim'], mean=(0.406, 0.456, 0.485), std=(0.225, 0.224, 0.229))
-                    )
 
     # optimizer setup
     base_lr = args.lr
@@ -173,13 +182,22 @@ def train():
                     tmp_lr = base_lr
                     set_lr(optimizer, tmp_lr)
         
-
-            targets = [label.tolist() for label in targets]
-            targets = tools.gt_creator(input_size, net.stride, args.num_classes, targets)
-
-
             # to device
             images = images.to(device)
+
+            # multi-scale trick
+            if iter_i % 10 == 0 and iter_i > 0 and args.multi_scale:
+                # randomly choose a new size
+                size = random.randint(10, 19) * 32
+                input_size = [size, size]
+                model.set_grid(input_size)
+            if args.multi_scale:
+                # interpolate
+                images = torch.nn.functional.interpolate(images, size=input_size, mode='bilinear', align_corners=False)
+            
+            # make train label
+            targets = [label.tolist() for label in targets]
+            targets = tools.gt_creator(input_size, net.stride, args.num_classes, targets)
             targets = torch.tensor(targets).float().to(device)
 
             # forward and loss
@@ -202,7 +220,7 @@ def train():
                 print('[Epoch %d/%d][Iter %d/%d][lr %.6f]'
                     '[Loss: cls %.2f || txty %.2f || twth %.2f ||total %.2f || size %d || time: %.2f]'
                         % (epoch+1, max_epoch, iter_i, epoch_size, tmp_lr,
-                            cls_loss.item(), txty_loss.item(), twth_loss.item(), total_loss.item(), input_size, t1-t0),
+                            cls_loss.item(), txty_loss.item(), twth_loss.item(), total_loss.item(), input_size[0], t1-t0),
                         flush=True)
 
                 t0 = time.time()
@@ -211,16 +229,19 @@ def train():
         # COCO evaluation
         if (epoch + 1) % args.eval_epoch == 0:
             model.trainable = False
+            model.set_grid(cfg['min_dim'])
             # evaluate
             ap50_95, ap50 = evaluator.evaluate(model)
             print('ap50 : ', ap50)
             print('ap50_95 : ', ap50_95)
             # convert to training mode.
             model.trainable = True
+            model.set_grid(input_size)
             model.train()
             if args.tfboard:
                 writer.add_scalar('val/COCOAP50', ap50, epoch + 1)
                 writer.add_scalar('val/COCOAP50_95', ap50_95, epoch + 1)
+
 
         if (epoch + 1) % 10 == 0:
             print('Saving state, epoch:', epoch + 1)

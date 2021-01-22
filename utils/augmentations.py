@@ -106,12 +106,12 @@ class ToPercentCoords(object):
 
 
 class Resize(object):
-    def __init__(self, size=300):
+    def __init__(self, size=[512, 512]):
         self.size = size
 
     def __call__(self, image, boxes=None, labels=None):
-        image = cv2.resize(image, (self.size,
-                                 self.size))
+        image = cv2.resize(image, (self.size[1],
+                                 self.size[0]))
         return image, boxes, labels
 
 
@@ -403,7 +403,7 @@ class PhotometricDistort(object):
 
 
 class SSDAugmentation(object):
-    def __init__(self, size=300, mean=(0.406, 0.456, 0.485), std=(0.225, 0.224, 0.229)):
+    def __init__(self, size=[512, 512], mean=(0.406, 0.456, 0.485), std=(0.225, 0.224, 0.229)):
         self.mean = mean
         self.size = size
         self.std = std
