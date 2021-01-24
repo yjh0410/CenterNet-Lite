@@ -10,6 +10,18 @@ Password：jz4q
 The official CenterNet takes advantage of DCN while I just replace it with SPP used in YOLOv3 as I'm 
 a little lazy ~
 
+On VOC:
+
+<table><tbody>
+<tr><th align="left" bgcolor=#f8f8f8> </th>     <td bgcolor=white> data </td><td bgcolor=white> mAP </td></tr>
+
+<tr><th align="right" bgcolor=#f8f8f8> (official) resnet18 + DCN </th><td bgcolor=white> VOC2007 </td><td bgcolor=white> 75.7 </td></tr>
+
+<tr><th align="right" bgcolor=#f8f8f8> (Our) resnet18 + SPP </th><td bgcolor=white> VOC2007 </td><td bgcolor=white> 75.3 </td></tr>
+</table></tbody>
+
+On COCO:
+
 <table><tbody>
 <tr><th align="left" bgcolor=#f8f8f8> </th>     <td bgcolor=white> data </td><td bgcolor=white> AP </td><td bgcolor=white> AP50 </td></tr>
 
