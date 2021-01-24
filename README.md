@@ -63,44 +63,44 @@ Just run ```sh data/scripts/COCO2017.sh```. You will get COCO train2017, val2017
 ## Train
 ### VOC
 ```Shell
-python train_voc.py --cuda
+python train.py --cuda -d voc
 ```
 
-You can run ```python train_voc.py -h``` to check all optional argument.
+You can run ```python train.py -h``` to check all optional argument.
 
 ### COCO
 ```Shell
-python train_coco.py --cuda
+python train.py --cuda -d coco
 ```
 
 ## Test
 ### VOC
 ```Shell
-python test_voc.py --cuda --trained_model [ Please input the path to model dir. ]
+python test.py --cuda -d voc --trained_model [ Please input the path to model dir. ]
 ```
 
 ### COCO
 ```Shell
-python test_coco.py --cuda --trained_model [ Please input the path to model dir. ]
+python test.py --cuda -d coco-val --trained_model [ Please input the path to model dir. ]
 ```
 
 
 ## Evaluation
 ### VOC
 ```Shell
-python eval_voc.py --cuda --train_model [ Please input the path to model dir. ]
+python eval.py --cuda -d voc --train_model [ Please input the path to model dir. ]
 ```
 
 ### COCO
 To run on COCO_val:
 
 ```Shell
-python eval_coco.py --cuda --train_model [ Please input the path to model dir. ]
+python eval.py --cuda -d coco-val --train_model [ Please input the path to model dir. ]
 ```
 
 To run on COCO_test-dev(You must be sure that you have downloaded test2017):
 
 ```Shell
-python eval_coco.py --cuda -t --train_model [ Please input the path to model dir. ]
+python eval.py --cuda -d coco-test --train_model [ Please input the path to model dir. ]
 ```
 You will get a .json file which can be evaluated on COCO test server.
