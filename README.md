@@ -27,7 +27,7 @@ On COCO:
 
 <tr><th align="right" bgcolor=#f8f8f8> (official) resnet18 + DCN </th><td bgcolor=white> COCO test-dev </td><td bgcolor=white> 28 </td><td bgcolor=white> 44.9 </td></tr>
 
-<tr><th align="right" bgcolor=#f8f8f8> (Our) resnet18 + SPP </th><td bgcolor=white> COCO val </td><td bgcolor=white> 25.3 </td><td bgcolor=white> 44.8 </td></tr>
+<tr><th align="right" bgcolor=#f8f8f8> (Our) resnet18 + SPP </th><td bgcolor=white> COCO val </td><td bgcolor=white> 25.8 </td><td bgcolor=white> 45.4 </td></tr>
 
 </table></tbody>
 
