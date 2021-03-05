@@ -239,7 +239,7 @@ def train():
             
             # make train label
             targets = [label.tolist() for label in targets]
-            targets = tools.gt_creator(train_size, net.stride, args.num_classes, targets)
+            targets = tools.gt_creator(train_size, net.stride, num_classes, targets)
             targets = torch.tensor(targets).float().to(device)
 
             # forward and loss
