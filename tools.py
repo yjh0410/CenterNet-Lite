@@ -107,14 +107,6 @@ def gt_creator(input_size, stride, num_classes, label_lists=[]):
                 pre_v = gt_tensor[batch_index, :, :, int(gt_cls)]
                 gt_tensor[batch_index, :, :, int(gt_cls)] = np.maximum(heatmap, pre_v)
 
-                # create Gauss heatmap
-                # for i in range(grid_x - 3*int(sigma_w), grid_x + 3*int(sigma_w) + 1):
-                #     for j in range(grid_y - 3*int(sigma_h), grid_y + 3*int(sigma_h) + 1):
-                #         if i < ws and j < hs:
-                #             v = np.exp(- (i - grid_x)**2 / (2*sigma_w**2) - (j - grid_y)**2 / (2*sigma_h**2))
-                #             pre_v = gt_tensor[batch_index, j, i, int(gt_cls)]
-                #             gt_tensor[batch_index, j, i, int(gt_cls)] = max(v, pre_v)
-
     gt_tensor = gt_tensor.reshape(batch_size, -1, num_classes+4+1)
 
     return gt_tensor
