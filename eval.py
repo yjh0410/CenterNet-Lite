@@ -9,6 +9,8 @@ from utils.cocoapi_evaluator import COCOAPIEvaluator
 parser = argparse.ArgumentParser(description='CenterNet Evaluation')
 parser.add_argument('-v', '--version', default='centernet',
                     help='centernet')
+parser.add_argument('-bk', '--backbone', default='r18',
+                    help='r18, r34, r50, r101')
 parser.add_argument('-d', '--dataset', default='voc',
                     help='voc, coco-val, coco-test.')
 parser.add_argument('--trained_model', type=str,
@@ -96,6 +98,7 @@ if __name__ == '__main__':
         net = CenterNet(device, 
                         input_size=input_size, 
                         num_classes=num_classes, 
+                        backbone=args.backbone,
                         use_nms=args.use_nms)
 
     # load net

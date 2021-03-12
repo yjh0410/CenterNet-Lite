@@ -13,6 +13,8 @@ import time
 parser = argparse.ArgumentParser(description='CenterNet Detection')
 parser.add_argument('-v', '--version', default='centernet',
                     help='centernet')
+parser.add_argument('-bk', '--backbone', default='r18',
+                    help='r18, r34, r50, r101')
 parser.add_argument('-d', '--dataset', default='voc',
                     help='voc, coco-val.')
 parser.add_argument('-size', '--input_size', default=512, type=int,
@@ -128,7 +130,8 @@ if __name__ == '__main__':
         from models.centernet import CenterNet
         net = CenterNet(device, 
                         input_size=input_size, 
-                        num_classes=num_classes, 
+                        num_classes=num_classes,
+                        backbone=args.backbone,
                         conf_thresh=args.conf_thresh, 
                         nms_thresh=args.nms_thresh, 
                         use_nms=args.use_nms)

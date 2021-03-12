@@ -17,6 +17,8 @@ def parse_args():
 
     parser.add_argument('-v', '--version', default='centernet',
                         help='centernet.')
+    parser.add_argument('-bk', '--backbone', default='r18',
+                        help='r18, r34, r50, r101')
     parser.add_argument('--trained_model', default='weights/',
                         type=str, help='Trained state_dict file path to open')
     parser.add_argument('--mode', default='image',
@@ -174,6 +176,7 @@ def run():
         net = CenterNet(device, 
                         input_size=input_size, 
                         num_classes=80, 
+                        backbone=args.backbone,
                         conf_thresh=args.conf_thresh, 
                         nms_thresh=args.nms_thresh, 
                         use_nms=args.use_nms)

@@ -7,12 +7,13 @@ import numpy as np
 import tools
 
 class CenterNet(nn.Module):
-    def __init__(self, device, input_size=None, trainable=False, num_classes=None, conf_thresh=0.05, nms_thresh=0.45, topk=100, use_nms=False, hr=False):
+    def __init__(self, device, input_size=None, trainable=False, num_classes=None, backbone='r18', conf_thresh=0.05, nms_thresh=0.45, topk=100, use_nms=False, hr=False):
         super(CenterNet, self).__init__()
         self.device = device
         self.input_size = input_size
         self.trainable = trainable
         self.num_classes = num_classes
+        self.bk = backbone
         self.conf_thresh = conf_thresh
         self.nms_thresh = nms_thresh
         self.stride = 4
@@ -23,19 +24,37 @@ class CenterNet(nn.Module):
         self.scale_torch = torch.tensor(self.scale.copy(), device=self.device).float()
 
         # backbone
-        self.backbone = resnet18(pretrained=trainable)
-
+        if self.bk == 'r18':
+            print("Use backbone : resnet-18")
+            self.backbone = resnet18(pretrained=trainable)
+            c = 512
+        elif self.bk == 'r34':
+            print("Use backbone : resnet-34")
+            self.backbone = resnet34(pretrained=trainable)
+            c = 512
+        elif self.bk == 'r50':
+            print("Use backbone : resnet-50")
+            self.backbone = resnet50(pretrained=trainable)
+            c = 2048
+        elif self.bk == 'r101':
+            print("Use backbone : resnet-101")
+            self.backbone = resnet101(pretrained=trainable)
+            c = 2048
+        else:
+            print("Only support r18, r34, r50, r101 as backbone !!")
+            exit()
+            
         # neck
         self.spp = nn.Sequential(
-            Conv(512, 256, k=1),
+            Conv(c, 256, k=1),
             SPP(),
-            BottleneckCSP(256*4, 512, n=1, shortcut=False)
+            BottleneckCSP(256*4, c, n=1, shortcut=False)
         )
 
         # head
-        self.deconv5 = DeConv(512, 256, ksize=4, stride=2) # 32 -> 16
-        self.deconv4 = DeConv(256, 256, ksize=4, stride=2) # 16 -> 8
-        self.deconv3 = DeConv(256, 256, ksize=4, stride=2) #  8 -> 4
+        self.deconv5 = DeConv(c, 256, ksize=4, stride=2) # 32 -> 16
+        self.deconv4 = DeConv(c, 256, ksize=4, stride=2) # 16 -> 8
+        self.deconv3 = DeConv(c, 256, ksize=4, stride=2) #  8 -> 4
 
         self.cls_pred = nn.Sequential(
             Conv(256, 64, k=3, p=1),

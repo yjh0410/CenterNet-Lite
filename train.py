@@ -22,6 +22,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='CenterNet Detection')
     parser.add_argument('-v', '--version', default='centernet',
                         help='centernet')
+    parser.add_argument('-bk', '--backbone', default='r18',
+                        help='r18, r34, r50, r101')
     parser.add_argument('-d', '--dataset', default='voc',
                         help='voc or coco')
     parser.add_argument('-ms', '--multi_scale', action='store_true', default=False,
@@ -153,7 +155,7 @@ def train():
     if args.version == 'centernet':
         from models.centernet import CenterNet
         
-        net = CenterNet(device, input_size=train_size, num_classes=num_classes, trainable=True)
+        net = CenterNet(device, input_size=train_size, num_classes=num_classes, trainable=True, backbone=args.backbone)
         print('Let us train centernet on the %s dataset ......' % (args.dataset))
 
     else:
