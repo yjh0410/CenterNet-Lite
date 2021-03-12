@@ -53,8 +53,8 @@ class CenterNet(nn.Module):
 
         # head
         self.deconv5 = DeConv(c, 256, ksize=4, stride=2) # 32 -> 16
-        self.deconv4 = DeConv(c, 256, ksize=4, stride=2) # 16 -> 8
-        self.deconv3 = DeConv(c, 256, ksize=4, stride=2) #  8 -> 4
+        self.deconv4 = DeConv(256, 256, ksize=4, stride=2) # 16 -> 8
+        self.deconv3 = DeConv(256, 256, ksize=4, stride=2) #  8 -> 4
 
         self.cls_pred = nn.Sequential(
             Conv(256, 64, k=3, p=1),
@@ -71,6 +71,7 @@ class CenterNet(nn.Module):
             nn.Conv2d(64, 2, kernel_size=1)
         )
 
+
     def create_grid(self, input_size):
         h, w = input_size
         # generate grid cells
@@ -81,10 +82,12 @@ class CenterNet(nn.Module):
         
         return grid_xy
 
+
     def set_grid(self, input_size):
         self.grid_cell = self.create_grid(input_size)
         self.scale = np.array([[[input_size[0], input_size[1], input_size[0], input_size[1]]]])
         self.scale_torch = torch.tensor(self.scale.copy(), device=self.device).float()
+
 
     def decode_boxes(self, pred):
         """
@@ -103,6 +106,7 @@ class CenterNet(nn.Module):
         
         return output
 
+
     def _gather_feat(self, feat, ind, mask=None):
         dim  = feat.size(2)
         ind  = ind.unsqueeze(2).expand(ind.size(0), ind.size(1), dim)
@@ -112,6 +116,7 @@ class CenterNet(nn.Module):
             feat = feat[mask]
             feat = feat.view(-1, dim)
         return feat
+
 
     def _topk(self, scores):
         B, C, H, W = scores.size()
@@ -125,6 +130,7 @@ class CenterNet(nn.Module):
         topk_inds = self._gather_feat(topk_inds.view(B, -1, 1), topk_ind).view(B, self.topk)
 
         return topk_score, topk_inds, topk_clses
+
 
     def nms(self, dets, scores):
         """"Pure Python NMS baseline."""
@@ -156,6 +162,7 @@ class CenterNet(nn.Module):
             order = order[inds + 1]
 
         return keep
+
 
     def forward(self, x, target=None):
         # backbone
@@ -198,7 +205,9 @@ class CenterNet(nn.Module):
                 # batch_size = 1
                 cls_pred = torch.sigmoid(cls_pred)              
                 # simple nms
-                hmax = F.max_pool2d(cls_pred, kernel_size=5, padding=2, stride=1)
+                hmax_1 = F.max_pool2d(cls_pred, kernel_size=3, padding=1, stride=1)
+                hmax_2 = F.max_pool2d(cls_pred, kernel_size=5, padding=2, stride=1)
+                hmax = torch.max(hmax_1, hmax_2)
                 keep = (hmax == cls_pred).float()
                 cls_pred *= keep
 
