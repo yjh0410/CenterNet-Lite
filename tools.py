@@ -56,7 +56,7 @@ def generate_txtytwth(gt_label, w, h, s):
     box_h_s = box_h / s
 
     r = gaussian_radius([box_w_s, box_h_s])
-    sigma_w = sigma_h = r / 3
+    r = max(int(r), 1)
     # sigma_w = box_w_s / 6
     # sigma_h = box_h_s / 6
 
@@ -76,7 +76,7 @@ def generate_txtytwth(gt_label, w, h, s):
     th = np.log(box_h_s)
     weight = 1.0 # 2.0 - (box_w / w) * (box_h / h)
 
-    return grid_x, grid_y, tx, ty, tw, th, weight, sigma_w, sigma_h
+    return grid_x, grid_y, tx, ty, tw, th, weight, r
 
 
 def gt_creator(input_size, stride, num_classes, label_lists=[]):
@@ -96,16 +96,22 @@ def gt_creator(input_size, stride, num_classes, label_lists=[]):
             gt_cls = gt_label[-1]
             result = generate_txtytwth(gt_label, w, h, s)
             if result:
-                grid_x, grid_y, tx, ty, tw, th, weight, sigma_w, sigma_h = result
+                grid_x, grid_y, tx, ty, tw, th, weight, r = result
 
                 gt_tensor[batch_index, grid_y, grid_x, int(gt_cls)] = 1.0
                 gt_tensor[batch_index, grid_y, grid_x, num_classes:num_classes + 4] = np.array([tx, ty, tw, th])
                 gt_tensor[batch_index, grid_y, grid_x, num_classes + 4] = weight
 
-                # create Gauss heatmap
-                heatmap = np.exp(- (grid_x_mat - grid_x) ** 2 / (2*sigma_w**2) - (grid_y_mat - grid_y)**2 / (2*sigma_h**2))
-                pre_v = gt_tensor[batch_index, :, :, int(gt_cls)]
-                gt_tensor[batch_index, :, :, int(gt_cls)] = np.maximum(heatmap, pre_v)
+                # get the x1x2y1y2 for the target
+                x1, y1, x2, y2 = gt_label[:-1]
+                x1s, x2s = int(x1 * ws), int(x2 * ws)
+                y1s, y2s = int(y1 * hs), int(y2 * hs)
+                # create the grid
+                grid_x_mat, grid_y_mat = np.meshgrid(np.arange(x1s, x2s), np.arange(y1s, y2s))
+                # create a Gauss Heatmap for the target
+                heatmap = np.exp(-((grid_x_mat - grid_x)**2 + (grid_y_mat - grid_y)**2) / (2*(r/3)**2))
+                p = gt_tensor[batch_index, y1s:y2s, x1s:x2s, int(gt_cls)]
+                gt_tensor[    batch_index, y1s:y2s, x1s:x2s, int(gt_cls)] = np.maximum(heatmap, p)
 
     gt_tensor = gt_tensor.reshape(batch_size, -1, num_classes+4+1)
 
