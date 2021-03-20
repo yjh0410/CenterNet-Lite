@@ -86,11 +86,18 @@ def generate_txtytwth(gt_label, w, h, s, gauss=False):
     box_w_s = box_w / s
     box_h_s = box_h / s
 
+<<<<<<< HEAD
     if gauss:
         r = gaussian_radius([box_w_s, box_h_s])
         r = max(int(r), 1)
     else:
         r = None
+=======
+    r = gaussian_radius([box_w_s, box_h_s])
+    r = max(int(r), 1)
+    # sigma_w = box_w_s / 6
+    # sigma_h = box_h_s / 6
+>>>>>>> 83e86bd71bf2a9729315f953e8a01f2c78488d6c
 
     if box_w < 1e-4 or box_h < 1e-4:
         # print('A dirty data !!!')
@@ -133,6 +140,7 @@ def gt_creator(input_size, stride, num_classes, label_lists=[], gauss=False):
                 gt_tensor[batch_index, grid_y, grid_x, num_classes:num_classes + 4] = np.array([tx, ty, tw, th])
                 gt_tensor[batch_index, grid_y, grid_x, num_classes + 4] = weight
 
+<<<<<<< HEAD
                 if gauss:
                     # get the x1x2y1y2 for the target
                     x1, y1, x2, y2 = gt_label[:-1]
@@ -145,6 +153,19 @@ def gt_creator(input_size, stride, num_classes, label_lists=[], gauss=False):
                     p = gt_tensor[batch_index, y1s:y2s, x1s:x2s, int(gt_cls)]
                     gt_tensor[    batch_index, y1s:y2s, x1s:x2s, int(gt_cls)] = np.maximum(heatmap, p)
                 
+=======
+                # get the x1x2y1y2 for the target
+                x1, y1, x2, y2 = gt_label[:-1]
+                x1s, x2s = int(x1 * ws), int(x2 * ws)
+                y1s, y2s = int(y1 * hs), int(y2 * hs)
+                # create the grid
+                grid_x_mat, grid_y_mat = np.meshgrid(np.arange(x1s, x2s), np.arange(y1s, y2s))
+                # create a Gauss Heatmap for the target
+                heatmap = np.exp(-((grid_x_mat - grid_x)**2 + (grid_y_mat - grid_y)**2) / (2*(r/3)**2))
+                p = gt_tensor[batch_index, y1s:y2s, x1s:x2s, int(gt_cls)]
+                gt_tensor[    batch_index, y1s:y2s, x1s:x2s, int(gt_cls)] = np.maximum(heatmap, p)
+
+>>>>>>> 83e86bd71bf2a9729315f953e8a01f2c78488d6c
     gt_tensor = gt_tensor.reshape(batch_size, -1, num_classes+4+1)
 
     return gt_tensor
