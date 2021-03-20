@@ -7,12 +7,12 @@ import os
 
 
 class Conv(nn.Module):
-    def __init__(self, c1, c2, k, s=1, p=0, d=1, g=1, leaky=True):
+    def __init__(self, c1, c2, k, s=1, p=0, d=1, g=1, act=True):
         super(Conv, self).__init__()
         self.convs = nn.Sequential(
             nn.Conv2d(c1, c2, k, stride=s, padding=p, dilation=d, groups=g),
             nn.BatchNorm2d(c2),
-            nn.LeakyReLU(0.1, inplace=True) if leaky else nn.Identity()
+            nn.ReLU(inplace=True) if act else nn.Identity()
         )
 
     def forward(self, x):
@@ -20,7 +20,7 @@ class Conv(nn.Module):
 
 
 class DeConv(nn.Module):
-    def __init__(self, in_channels, out_channels, ksize, stride=2, leaky=False):
+    def __init__(self, in_channels, out_channels, ksize, stride=2, act=True):
         super(DeConv, self).__init__()
         # deconv basic config
         if ksize == 4:
@@ -36,7 +36,7 @@ class DeConv(nn.Module):
         self.convs = nn.Sequential(
             nn.ConvTranspose2d(in_channels, out_channels, ksize, stride=stride, padding=padding, output_padding=output_padding),
             nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(0.1, inplace=True) if leaky else nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True) if act else nn.Identity()
         )
 
     def forward(self, x):
@@ -81,7 +81,7 @@ class BottleneckCSP(nn.Module):
         self.cv3 = nn.Conv2d(c_, c_, kernel_size=1, bias=False)
         self.cv4 = Conv(2 * c_, c2, k=1)
         self.bn = nn.BatchNorm2d(2 * c_)  # applied to cat(cv2, cv3)
-        self.act = nn.LeakyReLU(0.1, inplace=True)
+        self.act = nn.ReLU(inplace=True)
         self.m = nn.Sequential(*[Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)])
 
     def forward(self, x):

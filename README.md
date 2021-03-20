@@ -17,7 +17,7 @@ On VOC:
 
 <tr><th align="right" bgcolor=#f8f8f8> (official) resnet18 + DCN </th><td bgcolor=white> VOC2007 </td><td bgcolor=white> 75.7 </td></tr>
 
-<tr><th align="right" bgcolor=#f8f8f8> (Our) resnet18 + SPP </th><td bgcolor=white> VOC2007 </td><td bgcolor=white> 75.3 </td></tr>
+<tr><th align="right" bgcolor=#f8f8f8> (Our) resnet18 + SPP </th><td bgcolor=white> VOC2007 </td><td bgcolor=white> 75.6 </td></tr>
 </table></tbody>
 
 On COCO:

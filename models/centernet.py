@@ -6,6 +6,11 @@ from backbone import *
 import numpy as np
 import tools
 
+import os
+import matplotlib.pyplot as plt
+import cv2
+
+
 class CenterNet(nn.Module):
     def __init__(self, device, input_size=None, trainable=False, num_classes=None, backbone='r18', conf_thresh=0.05, nms_thresh=0.45, topk=100, use_nms=False, hr=False):
         super(CenterNet, self).__init__()
@@ -164,6 +169,23 @@ class CenterNet(nn.Module):
         return keep
 
 
+    def vis_fmap(self, fmap, sigmoid=False, name='p3'):
+        """ fmap = [C, H, W] """
+        save_path = os.path.join('vis_pred/' + name)
+        os.makedirs(save_path, exist_ok=True)
+        if sigmoid:
+            f = torch.sigmoid(fmap)
+        else:
+            f = fmap
+        
+        f = torch.sum(fmap, dim=0)
+        max_val = torch.max(f)
+        f /= max_val
+        f = f.cpu().numpy()
+        f = cv2.resize(f, (self.input_size[1], self.input_size[0]), cv2.INTER_NEAREST)
+        plt.imsave(os.path.join(save_path, name+'.jpg'), f)
+
+
     def forward(self, x, target=None):
         # backbone
         c2, c3, c4, c5 = self.backbone(x)
@@ -183,7 +205,7 @@ class CenterNet(nn.Module):
         # train
         if self.trainable:
             # [B, H*W, num_classes]
-            cls_pred = cls_pred.permute(0, 2, 3, 1).contiguous().view(B, -1, self.num_classes)
+            cls_pred = torch.sigmoid(cls_pred).permute(0, 2, 3, 1).contiguous().view(B, -1, self.num_classes)
             # [B, H*W, 2]
             txty_pred = txty_pred.permute(0, 2, 3, 1).contiguous().view(B, -1, 2)
             # [B, H*W, 2]
@@ -203,11 +225,13 @@ class CenterNet(nn.Module):
         else:
             with torch.no_grad():
                 # batch_size = 1
-                cls_pred = torch.sigmoid(cls_pred)              
+                cls_pred = torch.sigmoid(cls_pred)
+
+                # visual class prediction
+                self.vis_fmap(cls_pred[0], sigmoid=False, name='cls_pred')    
+
                 # simple nms
-                hmax_1 = F.max_pool2d(cls_pred, kernel_size=3, padding=1, stride=1)
-                hmax_2 = F.max_pool2d(cls_pred, kernel_size=5, padding=2, stride=1)
-                hmax = torch.max(hmax_1, hmax_2)
+                hmax = F.max_pool2d(cls_pred, kernel_size=5, padding=2, stride=1)
                 keep = (hmax == cls_pred).float()
                 cls_pred *= keep
 

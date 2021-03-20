@@ -80,6 +80,10 @@ def train():
     else:
         device = torch.device("cpu")
 
+    # gauss smooth
+    if args.gauss:
+        print('use Gauss Smooth Labels ...')
+
     # mosaic augmentation
     if args.mosaic:
         print('use Mosaic Augmentation ...')
@@ -241,7 +245,9 @@ def train():
             
             # make train label
             targets = [label.tolist() for label in targets]
-            targets = tools.gt_creator(train_size, net.stride, num_classes, targets)
+            targets = tools.gt_creator(train_size, net.stride, num_classes, targets, gauss=True)
+            # # vis data
+            # vis_heatmap(targets)
             targets = torch.tensor(targets).float().to(device)
 
             # forward and loss
@@ -270,7 +276,7 @@ def train():
                 t0 = time.time()
 
         # evaluation
-        if (epoch) % args.eval_epoch == 0:
+        if (epoch + 1) % args.eval_epoch == 0:
             model.trainable = False
             model.set_grid(val_size)
             model.eval()
@@ -290,10 +296,21 @@ def train():
                         args.version + '_' + repr(epoch + 1) + '.pth')
                         )  
 
-
 def set_lr(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+
+
+def vis_heatmap(targets):
+    # vis heatmap
+    HW = targets.shape[1]
+    h = int(np.sqrt(HW))
+    for c in range(20):
+        heatmap = targets[0, :, c].reshape(h, h)
+        name = VOC_CLASSES[c]
+        heatmap = cv2.resize(heatmap, (512, 512))
+        cv2.imshow(name, heatmap)
+        cv2.waitKey(0)
 
 
 if __name__ == '__main__':
