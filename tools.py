@@ -53,7 +53,7 @@ class FocalLoss(nn.Module):
 
 
 def gaussian_radius(det_size, min_overlap=0.7):
-    box_h, box_w = det_size
+    box_w, box_h = det_size
 
     a1  = 1
     b1  = (box_h + box_w)
