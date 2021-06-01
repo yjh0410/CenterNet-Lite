@@ -65,6 +65,9 @@ class CenterNet(nn.Module):
             Conv(256, 64, k=3, p=1),
             nn.Conv2d(64, self.num_classes, kernel_size=1)
         )
+        
+        init_prob = 0.01
+        nn.init.constant_(self.cls_pred[-1].bias, -torch.log(torch.tensor((1.-init_prob)/init_prob)))
 
         self.txty_pred = nn.Sequential(
             Conv(256, 64, k=3, p=1),
