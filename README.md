@@ -1,3 +1,10 @@
+# Update
+Recently, I publish a better CenterNet, called CenterNet-plus. Although my CenterNet-plus has a very simple piepline with any DCN layers, it surpasses the official CenterNet.
+
+You can get my CenterNet-plus from the following project:
+
+https://github.com/yjh0410/CenterNet-plus
+
 # CenterNet-Lite
 A PyTorch version of CenterNet（objects as points）. I only support resnet18 version. No DLA or Hourglass version.
 
