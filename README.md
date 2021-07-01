@@ -5,7 +5,7 @@ You can get my CenterNet-plus from the following project:
 
 https://github.com/yjh0410/CenterNet-plus
 
-# CenterNet-Lite
+# CenterNet
 A PyTorch version of CenterNet（objects as points）. I only support resnet18 version. No DLA or Hourglass version.
 
 I have trained it on VOC0712 and COCO 2017. You can download them from BaiDuYunDisk：
