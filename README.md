@@ -32,7 +32,7 @@ On COCO:
 <table><tbody>
 <tr><th align="left" bgcolor=#f8f8f8> </th>     <td bgcolor=white> data </td><td bgcolor=white> AP </td><td bgcolor=white> AP50 </td></tr>
 
-<tr><th align="right" bgcolor=#f8f8f8> (official) resnet18 + DCN </th><td bgcolor=white> COCO test-dev </td><td bgcolor=white> 28 </td><td bgcolor=white> 44.9 </td></tr>
+<tr><th align="right" bgcolor=#f8f8f8> (official) resnet18 + DCN </th><td bgcolor=white> COCO val </td><td bgcolor=white> 28 </td><td bgcolor=white> 44.9 </td></tr>
 
 <tr><th align="right" bgcolor=#f8f8f8> (Our) resnet18 + SPP </th><td bgcolor=white> COCO val </td><td bgcolor=white> 25.8 </td><td bgcolor=white> 45.4 </td></tr>
 
