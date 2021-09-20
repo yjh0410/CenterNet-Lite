@@ -36,7 +36,7 @@ class DeConv(nn.Module):
         self.convs = nn.Sequential(
             nn.ConvTranspose2d(in_channels, out_channels, ksize, stride=stride, padding=padding, output_padding=output_padding),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True) if act else nn.Identity()
+            nn.LeakyReLU(0.1, inplace=True) if act else nn.Identity()
         )
 
     def forward(self, x):
@@ -81,7 +81,7 @@ class BottleneckCSP(nn.Module):
         self.cv3 = nn.Conv2d(c_, c_, kernel_size=1, bias=False)
         self.cv4 = Conv(2 * c_, c2, k=1)
         self.bn = nn.BatchNorm2d(2 * c_)  # applied to cat(cv2, cv3)
-        self.act = nn.ReLU(inplace=True)
+        self.act = nn.LeakyReLU(0.1, inplace=True)
         self.m = nn.Sequential(*[Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)])
 
     def forward(self, x):
