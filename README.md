@@ -1,4 +1,11 @@
-# CenterNet-Lite
+# Update
+Recently, I publish a better CenterNet, called CenterNet-plus. Although my CenterNet-plus has a very simple piepline with any DCN layers, it surpasses the official CenterNet.
+
+You can get my CenterNet-plus from the following project:
+
+https://github.com/yjh0410/CenterNet-plus
+
+# CenterNet
 A PyTorch version of CenterNet（objects as points）. I only support resnet18 version. No DLA or Hourglass version.
 
 I have trained it on VOC0712 and COCO 2017. You can download them from BaiDuYunDisk：
@@ -25,7 +32,7 @@ On COCO:
 <table><tbody>
 <tr><th align="left" bgcolor=#f8f8f8> </th>     <td bgcolor=white> data </td><td bgcolor=white> AP </td><td bgcolor=white> AP50 </td></tr>
 
-<tr><th align="right" bgcolor=#f8f8f8> (official) resnet18 + DCN </th><td bgcolor=white> COCO test-dev </td><td bgcolor=white> 28 </td><td bgcolor=white> 44.9 </td></tr>
+<tr><th align="right" bgcolor=#f8f8f8> (official) resnet18 + DCN </th><td bgcolor=white> COCO val </td><td bgcolor=white> 28 </td><td bgcolor=white> 44.9 </td></tr>
 
 <tr><th align="right" bgcolor=#f8f8f8> (Our) resnet18 + SPP </th><td bgcolor=white> COCO val </td><td bgcolor=white> 25.8 </td><td bgcolor=white> 45.4 </td></tr>
 
