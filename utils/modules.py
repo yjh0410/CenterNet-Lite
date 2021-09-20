@@ -36,7 +36,7 @@ class DeConv(nn.Module):
         self.convs = nn.Sequential(
             nn.ConvTranspose2d(in_channels, out_channels, ksize, stride=stride, padding=padding, output_padding=output_padding),
             nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(0.1, inplace=True) if act else nn.Identity()
+            nn.ReLU(inplace=True) if act else nn.Identity()
         )
 
     def forward(self, x):
