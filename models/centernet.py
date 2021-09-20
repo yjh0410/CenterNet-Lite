@@ -230,8 +230,8 @@ class CenterNet(nn.Module):
                 # batch_size = 1
                 cls_pred = torch.sigmoid(cls_pred)
 
-                # visual class prediction
-                self.vis_fmap(cls_pred[0], sigmoid=False, name='cls_pred')    
+                # # visual class prediction
+                # self.vis_fmap(cls_pred[0], sigmoid=False, name='cls_pred')    
 
                 # simple nms
                 hmax = F.max_pool2d(cls_pred, kernel_size=5, padding=2, stride=1)
