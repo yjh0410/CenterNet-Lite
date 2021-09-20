@@ -35,6 +35,7 @@ coco_class_index = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 1
 coco_root = '/mnt/share/ssd2/dataset/COCO/'
 
 
+
 class COCODataset(Dataset):
     """
     COCO dataset class.
