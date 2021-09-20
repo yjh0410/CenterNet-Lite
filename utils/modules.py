@@ -12,7 +12,7 @@ class Conv(nn.Module):
         self.convs = nn.Sequential(
             nn.Conv2d(c1, c2, k, stride=s, padding=p, dilation=d, groups=g),
             nn.BatchNorm2d(c2),
-            nn.ReLU(inplace=True) if act else nn.Identity()
+            nn.LeakyReLU(0.1, inplace=True) if act else nn.Identity()
         )
 
     def forward(self, x):
