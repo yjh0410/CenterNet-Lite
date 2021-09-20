@@ -303,7 +303,7 @@ if __name__ == "__main__":
 
     img_size = 640
     dataset = COCODataset(
-                data_dir='/home/k303/object-detection/dataset/COCO/',
+                data_dir=coco_root,
                 img_size=img_size,
                 transform=BaseTransform([img_size, img_size], (0, 0, 0)),
                 debug=False,
